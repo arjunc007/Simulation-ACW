@@ -101,6 +101,7 @@
     <ClCompile Include="ContactManifold.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Hole.cpp" />
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Matrix3d.cpp" />
     <ClCompile Include="Plane.cpp" />
@@ -115,6 +116,8 @@
     <ClInclude Include="ContactManifold.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Hole.h" />
+    <ClInclude Include="InputManager.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="Matrix3d.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Shape.h" />

@@ -26,11 +26,13 @@ public:
 	void SetNewPos(Vector3f pos);
 	void SetNewVel(Vector3f vel);
 	void SetNewVelY(float f);
+	void AddNewVel(const Vector3f);
 	void SetMass(float mass);
 	void SetFriction(const float &kf);
 	void SetSpin(float f, Vector3f axis);
 	void SetColliding(bool b);
 
+	bool IsColliding() const { return isColliding; }
 	Vector3f GetPos() const;
 	Vector3f GetNewPos() const;
 	Vector3f GetVel() const;
@@ -40,6 +42,8 @@ public:
 	int GetID() const;
 	void ResetPos();
 	void SetFrictionForce(Vector3f);
+	void SetImpulse(const Vector3f);
+	void AddImpulse(const Vector3f);
 	void SetTorque(Vector3f);
 
 	virtual int IsColliding(Sphere* shape) const { return 5; }
@@ -56,6 +60,8 @@ protected:
 
 	ColorRGB color;
 	Vector3f m_force;
+	Vector3f m_impactForce;
+	Vector3f m_impulse;
 	Vector3f m_friction;							//Frictional force
 	float m_mass;
 	Matrix3d m_momentOfInertia;
@@ -71,7 +77,7 @@ protected:
 	Vector3f m_newVelocity;
 	float Cf = 0.f;									//Coefficient of friction
 	bool isColliding = false;
-	bool isSliding = false;
+	bool m_isGrounded = false;
 	int m_objectID;
 	GLuint m_texture;
 };

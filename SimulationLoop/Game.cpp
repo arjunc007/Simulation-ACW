@@ -11,6 +11,7 @@
 #include<stdio.h>
 #include<ostream>
 #include<stdlib.h>
+#include "Logger.h"
 //#include<typeinfo>
 //#include<fstream>
 
@@ -19,6 +20,7 @@ float Game::k;
 
 Game::Game(HDC hdc) : m_hdc(hdc), m_previousTime(0)
 {
+	m_inputManager = std::make_unique<InputManager>(this);
 	//Add Trays
 	//3 cm below top
 	trays[0] = Plane(Vector3f(0, 1, 0), Vector3f(-0.05f, 0.045f, 0.05f), Vector3f(0.05f, 0.045f, 0.05f), 0.1f);
@@ -59,6 +61,7 @@ Game::Game(HDC hdc) : m_hdc(hdc), m_previousTime(0)
 
 	QueryPerformanceFrequency(&frequency);
 	QueryPerformanceCounter(&start);
+	//CLEARLOG;
 }
 
 void Game::AddNewSphere() {
@@ -67,6 +70,7 @@ void Game::AddNewSphere() {
 	m_spheres.back()->SetVel(0.03f, 0.0f, 0.05f);
 	m_spheres.back()->SetSpin(20, Vector3f(0,0,1));						//In rpm
 	WriteToConsole();
+	//LOG("Sphere " << m_spheres.size() << " Added");
 }
 
 Game::~Game(void)
@@ -80,6 +84,7 @@ void Game::Update()
 	// **************************************************
 	// The simulation loop should be on its own thread(s)
 	// **************************************************
+	m_inputManager->Update();
 	SimulationLoop();
 	Render();
 }
@@ -119,6 +124,7 @@ void Game::CalculateObjectPhysics()
 {
 	for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
 		(*it)->CalculatePhysics(timeScale*m_dt);
+		//LOG("Sphere " <<  it - m_spheres.begin() << " Pos: " << (*it)->GetPos() << " NewPos: " << (*it)->GetNewPos() << " Velocity: " << (*it)->GetVel() << " NewVel: " << (*it)->GetNewVel());
 	}
 }
 
@@ -127,16 +133,19 @@ void Game::DynamicCollisionDetection()
 {
 	if (m_spheres.size() > 0)
 	{
+		float time = m_dt * timeScale;
+		//Collision detection with scene objects
 		for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
-			(*it)->CollisionDetection(trays, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(trays + 1, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(trays + 2, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(walls, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(walls + 1, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(walls + 2, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(walls + 3, m_itemManifold, m_dt*timeScale);
-			(*it)->CollisionDetection(bowl, m_itemManifold, m_dt*timeScale);
+			(*it)->CollisionDetection(trays, m_itemManifold, time);
+			(*it)->CollisionDetection(trays + 1, m_itemManifold, time);
+			(*it)->CollisionDetection(trays + 2, m_itemManifold, time);
+			(*it)->CollisionDetection(walls, m_itemManifold, time);
+			(*it)->CollisionDetection(walls + 1, m_itemManifold, time);
+			(*it)->CollisionDetection(walls + 2, m_itemManifold, time);
+			(*it)->CollisionDetection(walls + 3, m_itemManifold, time);
+			(*it)->CollisionDetection(bowl, m_itemManifold, time);
 		}
+		//Collision with added items
 		for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != (m_spheres.end() - 1); ++it) {
 			for (std::vector<Sphere*>::iterator it2 = it + 1; it2 != m_spheres.end(); it2++)
 				(*it)->CollisionDetection(*it2, m_itemManifold, m_dt*timeScale);
@@ -148,11 +157,20 @@ void Game::DynamicCollisionDetection()
 void Game::DynamicCollisionResponse()
 {
 	//Responses for all collisions
-		for (int i = 0; i < m_itemManifold->GetNumPoints(); i++)
-		{
-			ManifoldPoint &point = m_itemManifold->GetPoint(i);
-			point.contactID1->CollisionResponse(point);
-		}
+	for (auto& sphere : m_spheres)
+	{
+		if(sphere->Shape::IsColliding())
+			sphere->SetNewVel(Vector3f());
+	}
+
+	//Go through collisions one at a time and add to the impact force of that object for each collision.
+
+	for (int i = 0; i < m_itemManifold->GetNumPoints(); i++)
+	{
+		ManifoldPoint &point = m_itemManifold->GetPoint(i);
+
+		point.contactID1->CollisionResponse(point);
+	}
 }
 
 //**************************Update the physics calculations on each object***********************
@@ -350,4 +368,9 @@ void Game::WriteToConsole()
 	cout << "2. Number of cubes in the system: 0" << endl;
 	cout << "3. Magnitude of elasticity: " << Game::e << endl;
 	cout << "4. Magnitude of frictional force: " << Game::k << endl;
+}
+
+InputManager * Game::GetInputManager() const
+{
+	return m_inputManager.get();
 }

@@ -45,7 +45,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 			// Handle any non-accelerated key commands
 			switch (wparam)
 			{
-			case 0x31:	game->AddNewSphere();											//1
+			case 0x31:	game->AddNewSphere();							//1
 				break;
 			case 0x33: game->RemoveTopTray();											//3
 				break;

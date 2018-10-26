@@ -5,7 +5,7 @@
 
 
 
-Hole::Hole() : m_radius(0.01)
+Hole::Hole() : m_radius(0.01f)
 {
 }
 

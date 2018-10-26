@@ -42,10 +42,11 @@ bool Bowl::IsColliding(Sphere* sphere)
 	float r = sphere->GetRadius();
 	Vector3f sPos = sphere->GetNewPos();
 	Vector3f sVel = sphere->GetVel();
+
 	if (sPos.GetY() < -0.075f + r)
 	{
-		float dist = (m_pos - sPos).length() - r;
-		if (dist > 0.2f)
+		float dist = (m_pos - sPos).length() + r;
+		if (dist > this->r)
 			return true;
 	}
 	return false;

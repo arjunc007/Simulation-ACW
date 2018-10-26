@@ -56,21 +56,40 @@ void Plane::SetMoving(bool b)
 int Plane::IsColliding(Sphere* sphere) const
 {
 	float r = sphere->GetRadius();
-	Vector3f pos = sphere->GetNewPos();
+	Vector3f newpos(sphere->GetNewPos());
+	Vector3f pos(sphere->GetPos());
 
-	float dnorm = fabs((pos - m_pos).dot(m_normal));
+	float oldDist = m_normal.dot(pos - m_pos);
+	float newDist = m_normal.dot(newpos - m_pos);
+
 	float dtan = fabs((pos - m_pos).dot(t));
 	float dbinorm = fabs((pos - m_pos).dot(b));
-	if ( dnorm <= r  && dtan <= r + m_width/2.f && dbinorm <= r + m_length/2.f)				//First check if ball is within bounding sphere
+
+	if (dtan < r + m_width / 2.f && dbinorm < r + m_length / 2.f)
 	{
-		for (auto it = holes.begin(); it != holes.end(); it++)
+		//Intersection if points on opposite sides
+		if (oldDist * newDist < 0.f)
 		{
-			if ((pos - it->GetPos()).length() < it->GetRadius())
-				return 0;
-		}
+			for (auto it = holes.begin(); it != holes.end(); it++)
+			{
+				if ((pos - it->GetPos()).length() < it->GetRadius())
+					return 0;
+			}
 			return 1;
+		}
+
+		//If start or end inside radius
+		if (fabsf(oldDist) <= r || fabsf(newDist) <= r)
+		{
+			for (auto it = holes.begin(); it != holes.end(); it++)
+			{
+				if ((pos - it->GetPos()).length() < it->GetRadius())
+							return 0;
+			}
+			return 1;
+		}
 	}
-	
+	//No collision otherwise
 	return 0;
 }
 

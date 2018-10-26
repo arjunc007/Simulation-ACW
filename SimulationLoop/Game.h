@@ -2,11 +2,13 @@
 
 #include <Windows.h>
 #include "ContactManifold.h"
+#include "InputManager.h"
 #include "Sphere.h"
 #include "Plane.h"
 #include "Bowl.h"
 #include <vector>
 #include<fstream>
+#include<memory>
 
 class Game
 {
@@ -33,6 +35,7 @@ public:
 	void RemoveBottomTray();
 	void AddBottomTray();
 	void WriteToConsole();
+	InputManager* GetInputManager() const;
 
 public:
 	static float e, k;
@@ -46,6 +49,7 @@ private:
 	void Render();
 
 private:
+	std::unique_ptr<InputManager> m_inputManager;
 	HDC   m_hdc;
 	float m_dt;
 	int	  m_fps;

@@ -49,28 +49,32 @@ void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, 
 {
 	if (plane->IsColliding(this))
 	{
-		Vector3f colNormal = plane->GetNormal();
+		Vector3f colNormal = (plane->GetNormal().dot(m_pos - plane->GetPos()) * plane->GetNormal()).normalise();
 
 		//Calculate actual time of impact
-		//float t = dt*0.5f;						
-		//float dn = 0;
+		float t = dt*0.5f, t_start = 0, t_end = dt;
+		float dn = 0;
 		//std::ofstream out("test.txt", std::ofstream::out | std::ofstream::app);
 		//out << "loop start\n";
-		//while (true)
-		//{
-		//	CalcVelPos(t);
-		//	dn = (this->GetNewPos() - plane->GetPos()).dot(colNormal) - m_radius;
-		//	
-		//	out << plane->GetID() << " " << t << " " << dn << " " << m_newPos << " " << m_newVelocity << std::endl;
-		//	
-		//	if (dn < 0.f)
-		//		t *= 0.5f;
-		//	else if (dn > 10e-4)
-		//		t = (dt+t)*0.5f;
-		//	else break;
+		while (true)
+		{
+			CalcVelPos(t);
+			dn = (this->GetNewPos() - plane->GetPos()).dot(colNormal) - m_radius;
 
-		//	assert(t > 0 && t < dt);
-		//}
+			if (dn < 0.f)
+			{
+				t_end = t;
+				t = (t_start + t) * 0.5f;
+			}
+			else if (dn > 10e-4)
+			{
+				t_start = t;
+				t = (t + t_end) * 0.5f;
+			}
+			else break;
+
+			assert(t > 0 && t < dt);
+		}
 
 		contactManifold->Add({ this, plane, colNormal, dt });
 		isColliding = true;
@@ -108,9 +112,9 @@ void Sphere::CollisionResponse(ManifoldPoint &point)
 	//Without using Impulses, sort of working with bugs
 
 	ResetPos();
-
+	
 	Vector3f colNormal = point.contactNormal;
-
+	/*Working but stuck**************************************************************************************************
 	if (point.contactID2->GetID() < 8)
 	{
 		m_newVelocity = m_velocity - (1 + Game::e)*colNormal.dot(m_velocity)*colNormal;
@@ -152,11 +156,11 @@ void Sphere::CollisionResponse(ManifoldPoint &point)
 	}
 	else
 		isSliding = false;
-
+	
 
 	//	For rotation
 	m_newAngVel = colNormal.cross(Vt)/m_radius;
-
+	********************************************************************************************************************************/
 	//Test code
 	/*std::ofstream out("test.txt", std::ofstream::out | std::ofstream::app);
 	out << Vt << " " << Vt.length() << std::endl;*/
@@ -166,9 +170,15 @@ void Sphere::CollisionResponse(ManifoldPoint &point)
 
 	/*ResetPos();
 	Vector3f colNormal = point.contactNormal;
+	*/
+
+	//For collision with wall, add impactforce one after the other to the zeroed one.
+	//Calculate the new velocity after collision, then assuming ball was in contact with the wall for time dt, force is mass * change in acceleration, ie newVel - oldVel / dt
+	//m_impactForce += m_velocity - (1 + Game::e)*m_velocity.dot(colNormal)*colNormal;
+	//m_impactForce += m_mass * (m_newVelocity - m_velocity) / point.dt;
 	float t = point.dt;
 
-	Vector3f Vrel = point.contactID1->GetNewVel() - point.contactID2->GetNewVel();
+	Vector3f Vrel = point.contactID1->GetVel() - point.contactID2->GetVel();
 
 	Vector3f colPoint = (point.contactID1->GetNewPos() + m_radius*colNormal);
 
@@ -179,7 +189,10 @@ void Sphere::CollisionResponse(ManifoldPoint &point)
 	float Ib_inv = (m_momentOfInertia.inverse()*(rb.cross(colNormal))).cross(rb).dot(colNormal);
 	float J = max(-(1 + Game::e)*Vrel.dot(colNormal) / (m_inv + Ia_inv + Ib_inv), 0);
 
-	m_impactforce += J*colNormal / t;*/
+	m_impulse += J*colNormal;
+
+	m_newVelocity += J * colNormal / m_mass;
+	point.contactID2->AddNewVel(point.contactID2->GetNewVel() - J * colNormal / point.contactID2->GetMass());
 
 	//float d;
 	

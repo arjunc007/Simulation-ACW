@@ -10,6 +10,8 @@
 
 int Shape::countID = 0;
 
+const Vector3f g(0.0f, -9.81f, 0.0f);
+
 Shape::Shape(void)
 {
 }
@@ -54,6 +56,11 @@ void Shape::SetNewVelY(float f)
 	m_newVelocity.Set(m_newVelocity.GetX(), f, m_newVelocity.GetZ());
 }
 
+void Shape::AddNewVel(const Vector3f v)
+{
+	m_newVelocity += v;
+}
+
 void Shape::SetMass(float mass)
 {
 	m_mass = mass;
@@ -64,6 +71,16 @@ void Shape::SetFriction(const float& kf)
 	Cf = kf;
 	if(Cf < 0.0f)
 		Cf = 0.0f;
+}
+
+void Shape::SetImpulse(const Vector3f v)
+{
+	m_impulse = v;
+}
+
+void Shape::AddImpulse(const Vector3f v)
+{
+	m_impulse += v;
 }
 
 void Shape::SetSpin(float rpm, Vector3f axis)
@@ -90,20 +107,19 @@ int Shape::GetID() const
 void Shape::CalculatePhysics(float dt)
 {
 	// Calcuate total force for this sphere, e.g. F = F1+F2+F3+...
-	m_force.Set(0,0,0);
+	m_force.Set(0.f,0.f,0.f);
 
-	const Vector3f gravity(0.0f, -9.81f * m_mass, 0.0f);
+	//m_force += m_mass*g; //gravity
+	//m_force += m_impactForce;
 
-	m_force += gravity;
-
-	/*if (isSliding)
+	if (m_isGrounded)
 	{
 		m_force += m_friction;
-	}*/
-	/*else
+	}
+	else
 	{
-		m_force += gravity;
-	}	*/	
+		m_force += m_mass * g;
+	}	
 
 	CalcVelPos(dt);
 
@@ -123,8 +139,6 @@ void Shape::CalcVelPos(float dt)
 
 	// Integrate accel to get the new velocity (using Euler)
 	m_newVelocity = m_velocity + (accel * dt);
-
-
 
 	Vector3f k1 = m_velocity + (accel * 0);
 	Vector3f k2 = m_velocity + (accel + 0.5*k1) * 0.5 * dt;
@@ -152,7 +166,7 @@ void Shape::SetTorque(Vector3f v)
 
 void Shape::ResetPos()
 {
-	if(!isSliding)
+	if(!m_isGrounded)
 		m_newPos = m_pos;
 	else
 		m_newPos = Vector3f(m_newPos.GetX(), m_pos.GetY(), m_newPos.GetZ());
