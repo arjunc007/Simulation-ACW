@@ -23,6 +23,7 @@ public:
 	void SetColor(int r, int g, int b);
 	void SetPos(float x, float y, float z);
 	void SetVel(float x, float y, float z);
+	void SetVelFromImpulse();
 	void SetNewPos(Vector3f pos);
 	void SetNewVel(Vector3f vel);
 	void SetNewVelY(float f);

@@ -112,14 +112,18 @@ void Shape::CalculatePhysics(float dt)
 	//m_force += m_mass*g; //gravity
 	//m_force += m_impactForce;
 
-	if (m_isGrounded)
+	if (!m_isGrounded && !isColliding)
+	{
+		m_force += m_mass * g;
+	}
+	else if (m_isGrounded && !isColliding)
+	{
+		m_isGrounded = false;
+	}
+	else if (m_isGrounded)
 	{
 		m_force += m_friction;
 	}
-	else
-	{
-		m_force += m_mass * g;
-	}	
 
 	CalcVelPos(dt);
 
@@ -162,6 +166,11 @@ void Shape::SetFrictionForce(Vector3f v)
 void Shape::SetTorque(Vector3f v)
 {
 	m_torque = v;
+}
+
+void Shape::SetVelFromImpulse()
+{
+	m_newVelocity = m_impulse / m_mass + m_velocity;
 }
 
 void Shape::ResetPos()

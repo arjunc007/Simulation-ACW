@@ -51,36 +51,42 @@ void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, 
 	{
 		Vector3f colNormal = (plane->GetNormal().dot(m_pos - plane->GetPos()) * plane->GetNormal()).normalise();
 
-		//Calculate actual time of impact
-		float t = dt*0.5f, t_start = 0, t_end = dt;
-		float dn = 0;
-		//std::ofstream out("test.txt", std::ofstream::out | std::ofstream::app);
-		//out << "loop start\n";
-		while (true)
-		{
-			CalcVelPos(t);
-			dn = (this->GetNewPos() - plane->GetPos()).dot(colNormal) - m_radius;
-
-			if (dn < 0.f)
-			{
-				t_end = t;
-				t = (t_start + t) * 0.5f;
-			}
-			else if (dn > 10e-4)
-			{
-				t_start = t;
-				t = (t + t_end) * 0.5f;
-			}
-			else break;
-
-			assert(t > 0 && t < dt);
-		}
+		//CalcTimeOfImpact(dt, plane, colNormal);
 
 		contactManifold->Add({ this, plane, colNormal, dt });
 		isColliding = true;
 	}
-	else
-		isColliding = false;
+}
+
+void Sphere::CalcTimeOfImpact(const float & dt, Plane * plane, Vector3f &colNormal)
+{
+	//Calculate actual time of impact
+	double t = dt * 0.5f, t_start = 0, t_end = dt;
+	double dn = 0;
+	//std::ofstream out("test.txt", std::ofstream::out | std::ofstream::app);
+	//out << "loop start\n";
+	while (true)
+	{
+		CalcVelPos(t);
+		dn = (m_newPos - plane->GetPos()).dot(colNormal) - m_radius;
+
+		if (fabs(dn) < 10e-4 && dn < 0)
+			int x = 0;
+
+		if (dn < 0.0)
+		{
+			t_end = t;
+			t = (t_start + t) * 0.5;
+		}
+		else if (dn > 10e-4)
+		{
+			t_start = t;
+			t = (t + t_end) * 0.5;
+		}
+		else break;
+
+		assert(t > 0 && t < dt);
+	}
 }
 
 void Sphere::CollisionDetection(Sphere* sphere2, ContactManifold *contactManifold, float dt)
@@ -92,8 +98,6 @@ void Sphere::CollisionDetection(Sphere* sphere2, ContactManifold *contactManifol
 		isColliding = true;
 		sphere2->SetColliding(true);
 	}
-	else
-		isColliding = false;
 }
 
 void Sphere::CollisionDetection(Bowl* bowl, ContactManifold *contactManifold, float dt)
@@ -108,77 +112,27 @@ void Sphere::CollisionDetection(Bowl* bowl, ContactManifold *contactManifold, fl
 
 void Sphere::CollisionResponse(ManifoldPoint &point)
 {
-
-	//Without using Impulses, sort of working with bugs
-
 	ResetPos();
 	
 	Vector3f colNormal = point.contactNormal;
-	/*Working but stuck**************************************************************************************************
-	if (point.contactID2->GetID() < 8)
-	{
-		m_newVelocity = m_velocity - (1 + Game::e)*colNormal.dot(m_velocity)*colNormal;
-	}
-	else
-	{
-		float m1 = point.contactID1->GetMass();
-		float m2 = point.contactID2->GetMass();
-		Vector3f u1 = m_velocity;
-		Vector3f u2 = point.contactID2->GetVel();
-		Vector3f vL1, vL2;
-		
-		vL1 = ((m1 - Game::e*m2)*(u1.dot(colNormal)*colNormal) + (m2 + Game::e*m2)*(u2.dot(colNormal)*colNormal)) / (m1 + m2);
-		vL2 = ((m1 + Game::e*m1)*(u1.dot(colNormal)*colNormal) + (m2 - Game::e*m1)*(u2.dot(colNormal)*colNormal)) / (m1 + m2);
 
-		Vector3f v1 = u1 - u1.dot(colNormal)*colNormal + vL1;
-		Vector3f v2 = u2 - u2.dot(colNormal)*colNormal + vL2;
-		m_newVelocity = v1;
-		point.contactID2->SetNewVel(v2);
-	}
-
-
-	//Handling Friction
-	m_friction.Set(0, 0, 0);
-	Vector3f Vrel = point.contactID1->GetNewVel() - point.contactID2->GetNewVel();
-	Vector3f Vt = Vrel - Vrel.dot(colNormal)*colNormal;
-
-	if (fabs(Vrel.dot(colNormal)) < zero)
-	{
-		isSliding = true;
-		if (Vt.length() > zero)
-		{
-			float frictionMag = -point.contactID2->GetFriction()*9.8f*m_mass;
-			m_friction += frictionMag*Vt.normalise();
-			m_newVelocity = m_newVelocity + (m_friction / m_mass)*point.dt;
-		}
-		else
-			m_newVelocity.Set(0,0,0);
-	}
-	else
-		isSliding = false;
-	
-
-	//	For rotation
-	m_newAngVel = colNormal.cross(Vt)/m_radius;
-	********************************************************************************************************************************/
-	//Test code
-	/*std::ofstream out("test.txt", std::ofstream::out | std::ofstream::app);
-	out << Vt << " " << Vt.length() << std::endl;*/
-	
-
-	//Below is the impulse equations implementation, which doesn't quite work.
-
-	/*ResetPos();
-	Vector3f colNormal = point.contactNormal;
-	*/
-
-	//For collision with wall, add impactforce one after the other to the zeroed one.
-	//Calculate the new velocity after collision, then assuming ball was in contact with the wall for time dt, force is mass * change in acceleration, ie newVel - oldVel / dt
-	//m_impactForce += m_velocity - (1 + Game::e)*m_velocity.dot(colNormal)*colNormal;
-	//m_impactForce += m_mass * (m_newVelocity - m_velocity) / point.dt;
-	float t = point.dt;
+	Plane* wallPtr = dynamic_cast<Plane*>(point.contactID2);
 
 	Vector3f Vrel = point.contactID1->GetVel() - point.contactID2->GetVel();
+
+	if (wallPtr != nullptr)
+	{
+		//2nd object is a plane
+		if (Vrel.GetY() < 10e-4 && !m_isGrounded)
+		{
+			m_isGrounded = true;
+			//Apply friction
+			m_newVelocity.Set(m_newVelocity.GetX(), 0, m_newVelocity.GetZ());
+		}
+	}
+
+	//For collision with wall, add impactforce one after the other to the zeroed one.
+	float t = point.dt;
 
 	Vector3f colPoint = (point.contactID1->GetNewPos() + m_radius*colNormal);
 
@@ -191,29 +145,7 @@ void Sphere::CollisionResponse(ManifoldPoint &point)
 
 	m_impulse += J*colNormal;
 
-	m_newVelocity += J * colNormal / m_mass;
-	point.contactID2->AddNewVel(point.contactID2->GetNewVel() - J * colNormal / point.contactID2->GetMass());
-
-	//float d;
-	
-	//m_torque = Vector3f();
-
-	//float p = -d / (10 * t);
-
-	//Elasticity
-	
-	/*Vector3f Vrel = point.contactID1->GetNewVel() - point.contactID2->GetNewVel();
-	
-	Vector3f colPoint = (point.contactID1->GetNewPos() + m_radius*colNormal);
-
-	Vector3f ra = point.contactID1->GetNewPos() - colPoint;
-	Vector3f rb = point.contactID2->GetNewPos() - colPoint;
-	float m_inv = 1 / (point.contactID1->GetMass()) + 1 / (point.contactID2->GetMass());
-	float Ia_inv = (m_momentOfInertia.inverse()*ra.cross(colNormal)).cross(ra).dot(colNormal);
-	float Ib_inv = (m_momentOfInertia.inverse()*(rb.cross(colNormal))).cross(rb).dot(colNormal);
-	float J = max(-(1 + Game::e)*Vrel.dot(colNormal) / (m_inv + Ia_inv + Ib_inv),0);
-
-	m_impactforce += J*colNormal / t;*/
+	point.contactID2->AddImpulse(-J * colNormal);
 
 	//Friction	
 

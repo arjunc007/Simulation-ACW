@@ -62,9 +62,10 @@ int Plane::IsColliding(Sphere* sphere) const
 	float oldDist = m_normal.dot(pos - m_pos);
 	float newDist = m_normal.dot(newpos - m_pos);
 
-	float dtan = fabs((pos - m_pos).dot(t));
-	float dbinorm = fabs((pos - m_pos).dot(b));
+	float dtan = fabsf((pos - m_pos).dot(t));
+	float dbinorm = fabsf((pos - m_pos).dot(b));
 
+	//check within bounds of  plane
 	if (dtan < r + m_width / 2.f && dbinorm < r + m_length / 2.f)
 	{
 		//Intersection if points on opposite sides

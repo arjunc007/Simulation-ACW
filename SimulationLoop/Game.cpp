@@ -160,7 +160,7 @@ void Game::DynamicCollisionResponse()
 	for (auto& sphere : m_spheres)
 	{
 		if(sphere->Shape::IsColliding())
-			sphere->SetNewVel(Vector3f());
+			sphere->SetImpulse(Vector3f());
 	}
 
 	//Go through collisions one at a time and add to the impact force of that object for each collision.
@@ -170,6 +170,16 @@ void Game::DynamicCollisionResponse()
 		ManifoldPoint &point = m_itemManifold->GetPoint(i);
 
 		point.contactID1->CollisionResponse(point);
+	}
+
+	//Gathered all impulses, now convert to velocity and set isColliding to false
+	for (auto& sphere : m_spheres)
+	{
+		if (sphere->Shape::IsColliding())
+		{
+			sphere->SetVelFromImpulse();
+			sphere->SetColliding(false);
+		}
 	}
 }
 
