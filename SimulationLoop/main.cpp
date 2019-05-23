@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <Windows.h>
+#include <io.h>
 #include "Game.h"
+#define _O_TEXT        0x4000  // file mode is text (translated)
 
 const char TITLE[] = "Window Creation";
 
@@ -221,6 +223,31 @@ int WINAPI WinMain( HINSTANCE hinstance,
 	LPSTR lpcmdline,
 	int ncmdshow)
 {
+	AllocConsole();
+
+	// Get STDOUT handle
+	HANDLE ConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	int SystemOutput = _open_osfhandle(intptr_t(ConsoleOutput), _O_TEXT);
+	FILE *COutputHandle = _fdopen(SystemOutput, "w");
+
+	// Get STDERR handle
+	HANDLE ConsoleError = GetStdHandle(STD_ERROR_HANDLE);
+	int SystemError = _open_osfhandle(intptr_t(ConsoleError), _O_TEXT);
+	FILE *CErrorHandle = _fdopen(SystemError, "w");
+
+	// Get STDIN handle
+	//HANDLE ConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
+	//int SystemInput = _open_osfhandle(intptr_t(ConsoleInput), _O_TEXT);
+	//FILE *CInputHandle = _fdopen(SystemInput, "r");
+
+	//make cout, wcout, cin, wcin, wcerr, cerr, wclog and clog point to console as well
+	std::ios_base::sync_with_stdio(true);
+
+	// Redirect the CRT standard input, output, and error handles to the console
+	//freopen_s(&CInputHandle, "CONIN$", "r", stdin);
+	freopen_s(&COutputHandle, "CONOUT$", "w", stdout);
+	freopen_s(&CErrorHandle, "CONOUT$", "w", stderr);
+
 	WNDCLASS	winclass;	// this will hold the class we create
 	HWND		hwnd;		// generic window handle
 	MSG			msg;		// generic message

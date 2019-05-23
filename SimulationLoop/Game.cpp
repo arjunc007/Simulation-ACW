@@ -54,8 +54,8 @@ Game::Game(HDC hdc) : m_hdc(hdc), m_previousTime(0)
 	m_itemManifold = new ContactManifold();
 	//m_surfaceManifold = new ContactManifold();
 
-	AllocConsole();
-	freopen("CONOUT$", "a", stdout);
+	/*AllocConsole();
+	freopen("CONOUT$", "a", stdout);*/
 
 	ResetGame();
 
