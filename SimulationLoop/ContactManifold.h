@@ -10,6 +10,7 @@ struct ManifoldPoint {
 	Shape *contactID2;
 	Vector3f contactNormal;
 	float dt;
+	float penetration;
 };
 
 class ContactManifold

@@ -16,7 +16,7 @@ public:
 	Bowl();
 	~Bowl();
 
-	bool IsColliding(Sphere* sphere);
+	bool IsColliding(Sphere* sphere, float& penetration, Vector3f& normal);
 
 	void Render() const;
 

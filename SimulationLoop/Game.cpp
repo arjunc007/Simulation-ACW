@@ -39,13 +39,13 @@ Game::Game(HDC hdc) : m_hdc(hdc), m_previousTime(0)
 	//trays[2].SetFriction(0.3f);
 	
 	//Add box - 15cm high, 10x10cm area
-	walls[0] = Plane(Vector3f(1, 0, 0), Vector3f(-0.05f, -0.075f, -0.05f), Vector3f(-0.05f, -0.075f, 0.05f), 0.15f);
+	walls[0] = Plane(Vector3f(1.f, 0.f, 0.f), Vector3f(-0.05f, -0.075f, 0.05f), Vector3f(-0.05f, -0.075f, -0.05f), 0.15f);
 	walls[0].SetColor(0, 1, 1);
-	walls[1] = Plane(Vector3f(-1, 0, 0), Vector3f(0.05f, -0.075f, 0.05f), Vector3f(0.05f, -0.075f, -0.05f), 0.15f);
+	walls[1] = Plane(Vector3f(-1.f, 0.f, 0.f), Vector3f(0.05f, -0.075f, -0.05f), Vector3f(0.05f, -0.075f, 0.05f), 0.15f);
 	walls[1].SetColor(0, 1, 1);
-	walls[2] = Plane(Vector3f(0.0f, 0.0f, 1.0f), Vector3f(0.05f, -0.075f, -0.05f), Vector3f(-0.05f, -0.075f, -0.05f), 0.15f);
+	walls[2] = Plane(Vector3f(0.f, 0.f, 1.f), Vector3f(-0.05f, -0.075f, -0.05f), Vector3f(0.05f, -0.075f, -0.05f), 0.15f);
 	walls[2].SetColor(1, 1, 1);
-	walls[3] = Plane(Vector3f(0, 0, -1), Vector3f(-0.05f, -0.075f, 0.05f), Vector3f(0.05f, -0.075f, 0.05f), 0.15f);
+	walls[3] = Plane(Vector3f(0.0f, 0.0f, -1.0f), Vector3f(0.05f, -0.075f, 0.05f), Vector3f(-0.05f, -0.075f, 0.05f), 0.15f);
 	walls[3].SetColor(1, 1, 1);
 
 	//Add bowl
@@ -98,23 +98,27 @@ void Game::SimulationLoop()
 
 	m_fps = static_cast<int>(1.0 / m_dt);
 
+	if (m_dt > 0.25f)
+	{
+		m_dt = 0.25f;
+	}
+
+	m_previousTime += m_dt * timeScale;
+
 	if (notPaused)
 	{
-		// Calculate the physic calculations on all objects (e.g. new position, velocity, etc)
-		CalculateObjectPhysics();
+		while (m_previousTime >= m_fixedDt)
+		{
+			CalculateObjectPhysics();
 
-		// Clear the manifold so that we can calculate all collisions for this simulation loop
-		m_itemManifold->Clear();
-		//m_surfaceManifold->Clear();
+			m_itemManifold->Clear();
+			DynamicCollisionDetection();
+			DynamicCollisionResponse();
 
-		// Find dynamic collisions for all objects and add to contact manifold 
-		DynamicCollisionDetection();
+			UpdateObjectPhysics();
 
-		// Handle dynamic collision responses using the contact manifold
-		DynamicCollisionResponse();
-
-		// Update the physics calculations on all objects (e.g. new position, velocity, etc)
-		UpdateObjectPhysics();
+			m_previousTime -= m_fixedDt;
+		}
 	}
 }
 
@@ -123,7 +127,7 @@ void Game::SimulationLoop()
 void Game::CalculateObjectPhysics()
 {
 	for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
-		(*it)->CalculatePhysics(timeScale*m_dt);
+		(*it)->CalculatePhysics(m_fixedDt);
 		//LOG("Sphere " <<  it - m_spheres.begin() << " Pos: " << (*it)->GetPos() << " NewPos: " << (*it)->GetNewPos() << " Velocity: " << (*it)->GetVel() << " NewVel: " << (*it)->GetNewVel());
 	}
 }
@@ -156,30 +160,21 @@ void Game::DynamicCollisionDetection()
 //**************************Handle dynamic collision responses***********************
 void Game::DynamicCollisionResponse()
 {
-	//Responses for all collisions
-	for (auto& sphere : m_spheres)
-	{
-		if(sphere->Shape::IsColliding())
-			sphere->SetImpulse(Vector3f());
-	}
-
-	//Go through collisions one at a time and add to the impact force of that object for each collision.
-
 	for (int i = 0; i < m_itemManifold->GetNumPoints(); i++)
 	{
-		ManifoldPoint &point = m_itemManifold->GetPoint(i);
+		ManifoldPoint& point = m_itemManifold->GetPoint(i);
 
 		point.contactID1->CollisionResponse(point);
-	}
 
-	//Gathered all impulses, now convert to velocity and set isColliding to false
-	for (auto& sphere : m_spheres)
-	{
-		if (sphere->Shape::IsColliding())
+		const float slack = 0.01f;
+		float totalInvMass = (1.f / point.contactID1->GetMass());
+		if (point.contactID2->GetMass() < 1000000.0f)
 		{
-			sphere->SetVelFromImpulse();
-			sphere->SetColliding(false);
+			totalInvMass += (1.0f / point.contactID2->GetMass());
 		}
+
+		Vector3f correction = point.contactNormal * (point.penetration * 0.8f);
+		point.contactID1->SetNewPos(point.contactID1->GetNewPos() + correction);
 	}
 }
 
@@ -271,7 +266,7 @@ void Game::AddBottomTray()
 
 
 void Game::ResetGame() {
-	e = 0.8f;
+	e = 0.5f;
 	timeScale = 1.0f;
 	m_spheres.clear();
 	m_itemManifold->Clear();

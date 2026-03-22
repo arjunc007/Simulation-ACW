@@ -55,15 +55,15 @@ void Plane::SetMoving(bool b)
 
 int Plane::IsColliding(Sphere* sphere) const
 {
-	float r = sphere->GetRadius();
+	const float r = sphere->GetRadius();
 	Vector3f newpos(sphere->GetNewPos());
 	Vector3f pos(sphere->GetPos());
 
-	float oldDist = m_normal.dot(pos - m_pos);
-	float newDist = m_normal.dot(newpos - m_pos);
+	const float oldDist = m_normal.dot(pos - m_pos);
+	const float newDist = m_normal.dot(newpos - m_pos);
 
-	float dtan = fabsf((pos - m_pos).dot(t));
-	float dbinorm = fabsf((pos - m_pos).dot(b));
+	const float dtan = fabsf((pos - m_pos).dot(t));
+	const float dbinorm = fabsf((pos - m_pos).dot(b));
 
 	//check within bounds of  plane
 	if (dtan < r + m_width / 2.f && dbinorm < r + m_length / 2.f)
@@ -80,7 +80,7 @@ int Plane::IsColliding(Sphere* sphere) const
 		}
 
 		//If start or end inside radius
-		if (fabsf(oldDist) <= r || fabsf(newDist) <= r)
+		if (newDist <= r && newDist >= -r)
 		{
 			for (auto it = holes.begin(); it != holes.end(); it++)
 			{
@@ -99,9 +99,19 @@ Vector3f Plane::GetPoint() const
 	return vertices[0];
 }
 
-Vector3f Plane::GetNormal() const
+const Vector3f& Plane::GetNormal() const
 {
 	return m_normal;
+}
+
+const Vector3f& Plane::GetTangent() const
+{
+	return t;
+}
+
+const Vector3f& Plane::GetBinormal() const
+{
+	return b;
 }
 
 void Plane::StartMoving(float dirX, float t)
@@ -116,21 +126,20 @@ void Plane::UpdatePos(float dt)
 {
 	if (moving)
 	{
-		Vector3f newPos;
-		newPos = m_pos + m_velocity*dt;
-		if (newPos.GetX() >= 0.1f || newPos.GetX() <= 0.0f)
-		{
-			newPos = m_pos;
-			moving = false;
-			return;
-		}
 		Vector3f velocity = m_velocity;
-		Vector3f moveDist = (newPos-m_pos).length()*velocity.normalise();
-		vertices[0] += moveDist;
-		vertices[1] += moveDist;
-		vertices[2] += moveDist;
-		vertices[3] += moveDist;
-		m_pos = newPos;
+		Vector3f moveDist = velocity * dt;
+
+		for (int i = 0; i < 4; i++)
+		{
+			vertices[i] += moveDist;
+		}
+
+		m_pos = (vertices[0] + vertices[2]) * 0.5f;
+
+		if (m_pos.GetX() >= 0.1f || m_pos.GetX() <= -0.1f)
+		{
+			moving = false;
+		}
 	}
 }
 

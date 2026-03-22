@@ -18,8 +18,7 @@ Sphere::Sphere(void) : Shape(0.02f), m_radius(0.005f)
 	m_objectID = countID++;
 	m_texture = TextureLoader::LoadBMP("checker.bmp");
 	SetColor(1, 0, 0);
-	isColliding = false;
-	float I = (2.f * m_mass * m_radius * m_radius) / 3.0f;
+	const float I = (2.f * m_mass * m_radius * m_radius) / 3.0f;
 	m_momentOfInertia = Matrix3d(I, 0, 0, 0, I, 0, 0, 0, I);
 	m_rotation = Matrix3d::MatrixIdentity();
 	vrot.Set(0, 0, 0);
@@ -47,14 +46,17 @@ int Sphere::IsColliding(Sphere* sphere) const
 
 void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, const float &dt)
 {
-	if (plane->IsColliding(this))
+	const float dist = plane->GetNormal().dot(m_pos - plane->GetPos());
+	const float penetration = m_radius - dist;
+
+	if (penetration > 0)
 	{
-		Vector3f colNormal = (plane->GetNormal().dot(m_pos - plane->GetPos()) * plane->GetNormal()).normalise();
-
-		//CalcTimeOfImpact(dt, plane, colNormal);
-
-		contactManifold->Add({ this, plane, colNormal, dt });
-		isColliding = true;
+		Vector3f d = m_pos - plane->GetPos();
+		if (fabsf(d.dot(plane->GetTangent())) < plane->GetWidth() / 2.0f &&
+			fabsf(d.dot(plane->GetBinormal())) < plane->GetLength() / 2.0f)
+		{
+			contactManifold->Add({ this, plane, plane->GetNormal(), dt, penetration });
+		}
 	}
 }
 
@@ -89,63 +91,89 @@ void Sphere::CalcTimeOfImpact(const float & dt, Plane * plane, Vector3f &colNorm
 	}
 }
 
-void Sphere::CollisionDetection(Sphere* sphere2, ContactManifold *contactManifold, float dt)
+void Sphere::CollisionDetection(Sphere* other, ContactManifold *contactManifold, float dt)
 {
-	if (sphere2->IsColliding(this) == 1) {
-		Vector3f dist = this->GetNewPos() - sphere2->GetNewPos();
-		Vector3f colNormal = dist.normalise();
-		contactManifold->Add({ this, sphere2, colNormal, dt });
-		isColliding = true;
-		sphere2->SetColliding(true);
+	Vector3f relPos = m_pos - other->GetPos();
+	float dist = relPos.length();
+	float minSourceDist = m_radius + other->GetRadius();
+
+	if (dist < minSourceDist)
+	{
+		float penetration = minSourceDist - dist;
+		Vector3f normal = relPos.normalise();
+
+		contactManifold->Add({ this, other, normal, dt, penetration });
 	}
 }
 
 void Sphere::CollisionDetection(Bowl* bowl, ContactManifold *contactManifold, float dt)
 {
-	if (bowl->IsColliding(this))
+	float penetration;
+	Vector3f normal;
+
+	if (bowl->IsColliding(this, penetration, normal))
 	{
-		Vector3f normal = (bowl->GetPos() - m_pos).normalise();
-		contactManifold->Add({ this, bowl, normal, dt });
-		isColliding = true;
+		contactManifold->Add({ this, bowl, normal, dt, penetration });
 	}
 }
 
 void Sphere::CollisionResponse(ManifoldPoint &point)
-{
-	ResetPos();
-	
-	Vector3f colNormal = point.contactNormal;
+{	
+	Shape* A = point.contactID1;
+	Shape* B = point.contactID2;
+	Vector3f n = point.contactNormal;
 
-	Plane* wallPtr = dynamic_cast<Plane*>(point.contactID2);
+	Vector3f ra = n * -m_radius;
 
-	Vector3f Vrel = point.contactID1->GetVel() - point.contactID2->GetVel();
-
-	if (wallPtr != nullptr)
+	Vector3f rb;
+	Sphere* sphereB = dynamic_cast<Sphere*>(B);
+	if (sphereB)
 	{
-		//2nd object is a plane
-		if (Vrel.GetY() < 10e-4 && !m_isGrounded)
-		{
-			m_isGrounded = true;
-			//Apply friction
-			m_newVelocity.Set(m_newVelocity.GetX(), 0, m_newVelocity.GetZ());
-		}
+		rb = n * sphereB->GetRadius();
+	}
+	else
+	{
+		rb = Vector3f();
 	}
 
-	//For collision with wall, add impactforce one after the other to the zeroed one.
-	float t = point.dt;
+	Vector3f va = A->GetVel() + A->GetAngVel().cross(ra);
+	Vector3f vb = B->GetVel() + B->GetAngVel().cross(rb);
 
-	Vector3f colPoint = (point.contactID1->GetNewPos() + m_radius*colNormal);
+	Vector3f vRel = va - vb;
 
-	Vector3f ra = point.contactID1->GetNewPos() - colPoint;
-	Vector3f rb = point.contactID2->GetNewPos() - colPoint;
-	float m_inv = 1 / (point.contactID1->GetMass()) + 1 / (point.contactID2->GetMass());
-	float Ia_inv = (m_momentOfInertia.inverse()*ra.cross(colNormal)).cross(ra).dot(colNormal);
-	float Ib_inv = (m_momentOfInertia.inverse()*(rb.cross(colNormal))).cross(rb).dot(colNormal);
-	float J = max(-(1 + Game::e)*Vrel.dot(colNormal) / (m_inv + Ia_inv + Ib_inv), 0);
+	float contactVel = vRel.dot(n);
 
-	m_impulse += J*colNormal;
+	if (contactVel > 0)
+	{
+		//Objects already moving apart
+		return;
+	}
 
-	point.contactID2->AddImpulse(-J * colNormal);
+	float invMassA = 1.f / A->GetMass();
+	float invMassB = (B->GetMass() > 1000000.f) ? 0.f : 1.f / B->GetMass();
+	float rotA = (A->GetInertiaInv() * ra.cross(n)).cross(ra).dot(n);
+	float rotB = 0.f; 
+	if (sphereB)
+	{
+		rotB = (sphereB->GetInertiaInv() * rb.cross(n)).cross(rb).dot(n);
+	}
+
+	float J = -(1.f + Game::e) * contactVel;
+	J /= (invMassA + invMassB + rotA + rotB);
+
+	Vector3f impulse = J * n;
+
+	A->AddImpulse(impulse);
+	if (invMassB > 0)
+	{
+		B->AddImpulse(impulse * -1.f);
+	}
+
+	A->AddAngularImpulse(ra.cross(impulse));
+	if (sphereB)
+	{
+		sphereB->AddAngularImpulse(rb.cross(impulse * -1.f));
+	}
 
 	//Friction	
 

@@ -5,7 +5,7 @@ class Hole : public Shape
 {
 public:
 	Hole();
-	~Hole();
+	~Hole() override;
 
 	float GetRadius() const;
 

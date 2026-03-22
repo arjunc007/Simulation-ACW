@@ -13,7 +13,11 @@ public:
 	~Plane();
 
 	Vector3f GetPoint() const;
-	Vector3f GetNormal() const;
+	const Vector3f& GetNormal() const;
+	const Vector3f& GetTangent() const;
+	const Vector3f& GetBinormal() const;
+	float GetWidth() const { return m_width; }
+	float GetLength() const { return m_length; }
 
 	int IsColliding(Sphere* sphere) const override;
 	bool IsMoving() const;

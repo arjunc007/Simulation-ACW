@@ -73,25 +73,20 @@ void Shape::SetFriction(const float& kf)
 		Cf = 0.0f;
 }
 
-void Shape::SetImpulse(const Vector3f v)
+void Shape::AddImpulse(const Vector3f& impulse)
 {
-	m_impulse = v;
+	m_newVelocity += impulse / m_mass;
 }
 
-void Shape::AddImpulse(const Vector3f v)
+void Shape::AddAngularImpulse(const Vector3f& angImpulse)
 {
-	m_impulse += v;
+	m_newAngVel += GetInertiaInv() * angImpulse;
 }
 
 void Shape::SetSpin(float rpm, Vector3f axis)
 {
 	float radps = rpm * 2.f * 3.14159f / 60.f;
 	m_angVel = radps * axis.normalise();
-}
-
-void Shape::SetColliding(bool b)
-{
-	isColliding = b;
 }
 
 float Shape::GetFriction() const
@@ -109,10 +104,11 @@ void Shape::CalculatePhysics(float dt)
 	// Calcuate total force for this sphere, e.g. F = F1+F2+F3+...
 	m_force.Set(0.f,0.f,0.f);
 
-	//m_force += m_mass*g; //gravity
-	//m_force += m_impactForce;
+	if (m_mass < 1000000.0f) {
+		m_force += m_mass * g;
+	}
 
-	if (!m_isGrounded && !isColliding)
+	/*if (!m_isGrounded && !isColliding)
 	{
 		m_force += m_mass * g;
 	}
@@ -123,18 +119,16 @@ void Shape::CalculatePhysics(float dt)
 	else if (m_isGrounded)
 	{
 		m_force += m_friction;
-	}
+	}*/
 
 	CalcVelPos(dt);
 
-	//Rotation
-	/*Vector3f angAccel = m_momentOfInertia.inverse()* m_torque;*/
-
+	m_newAngVel = m_angVel;
 	Matrix3d w_star = Matrix3d(0.0f, -m_newAngVel.GetZ(), m_newAngVel.GetY(),
 		m_newAngVel.GetZ(), 0.0f, -m_newAngVel.GetX(),
 		-m_newAngVel.GetY(), m_newAngVel.GetX(), 0.0f);
 
-	m_newRot = exp(w_star*dt).multiply(m_rotation);
+	m_newRot = exp(w_star * dt).multiply(m_rotation);
 }
 
 void Shape::CalcVelPos(float dt)
@@ -144,15 +138,15 @@ void Shape::CalcVelPos(float dt)
 	// Integrate accel to get the new velocity (using Euler)
 	m_newVelocity = m_velocity + (accel * dt);
 
-	Vector3f k1 = m_velocity + (accel * 0);
-	Vector3f k2 = m_velocity + (accel + 0.5*k1) * 0.5 * dt;
-	Vector3f k3 = m_velocity + (accel + 0.5*k2) * 0.5 * dt;
-	Vector3f k4 = m_velocity + (accel + k3) * dt;
+	//Vector3f k1 = m_velocity + (accel * 0);
+	//Vector3f k2 = m_velocity + (accel + 0.5 * k1) * 0.5 * dt;
+	//Vector3f k3 = m_velocity + (accel + 0.5 * k2) * 0.5 * dt;
+	//Vector3f k4 = m_velocity + (accel + k3) * dt;
 
-	m_newPos = m_pos + (1 / 6.0f) * (k1 + 2 * k2 + 2 * k3 + k4) *dt;
+	//m_newPos = m_pos + (1 / 6.0f) * (k1 + 2 * k2 + 2 * k3 + k4) *dt;
 
-	 //Integrate old velocity to get the new position (using Euler)
-	//m_newPos = m_pos + (m_velocity * dt);
+	//Integrate old velocity to get the new position (using Euler)
+	m_newPos = m_pos + (m_velocity * dt);
 
 	//Improved Euler
 	//m_newPos = m_pos + 0.5 * ((m_velocity + m_newVelocity) * dt);
@@ -168,11 +162,6 @@ void Shape::SetTorque(Vector3f v)
 	m_torque = v;
 }
 
-void Shape::SetVelFromImpulse()
-{
-	m_newVelocity = m_impulse / m_mass + m_velocity;
-}
-
 void Shape::ResetPos()
 {
 	if(!m_isGrounded)
@@ -185,6 +174,8 @@ void Shape::Update()
 {
 	m_velocity = m_newVelocity;
 	m_pos = m_newPos;
+
+	m_angVel = m_newAngVel;
 	m_rotation = m_newRot;
 }
 

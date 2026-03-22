@@ -67,7 +67,9 @@ float Vector3f::dot(const Vector3f &vec) const
 
 Vector3f Vector3f::cross(const Vector3f &vec) const
 {
-	return Vector3f(m_y*vec.GetZ() - m_z*vec.GetY(), m_x*vec.GetZ() - m_z*vec.GetX(), m_x*vec.GetY() - m_y*vec.GetX());
+	return Vector3f(m_y * vec.GetZ() - m_z * vec.GetY(), 
+		m_z * vec.GetX() - m_x * vec.GetZ(), 
+		m_x * vec.GetY() - m_y * vec.GetX());
 }
 
 float Vector3f::length() const

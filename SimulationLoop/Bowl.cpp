@@ -37,17 +37,23 @@ Bowl::~Bowl()
 {
 }
 
-bool Bowl::IsColliding(Sphere* sphere)
+bool Bowl::IsColliding(Sphere* sphere, float& penetration, Vector3f& normal)
 {
-	float r = sphere->GetRadius();
-	Vector3f sPos = sphere->GetNewPos();
-	Vector3f sVel = sphere->GetVel();
+	// 1. Vector from Bowl Center to Sphere Center
+	Vector3f delta = sphere->GetNewPos() - m_pos;
+	float currentDist = delta.length();
 
-	if (sPos.GetY() < -0.075f + r)
+	// 2. The boundary where the sphere edge touches the bowl inner wall
+	float collisionLimit = r - sphere->GetRadius();
+
+	// 3. If distance is greater than the limit, the sphere is "sinking" into the wall
+	if (currentDist > collisionLimit)
 	{
-		float dist = (m_pos - sPos).length() + r;
-		if (dist > this->r)
-			return true;
+		penetration = currentDist - collisionLimit;
+
+		// Normal points back toward the center of the bowl to push the ball in
+		normal = (m_pos - sphere->GetNewPos()).normalise();
+		return true;
 	}
 	return false;
 }
