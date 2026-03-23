@@ -59,7 +59,7 @@ private:
 	bool notPaused = true;
 	Vector3f camera, focus;
 	float fovy;
-	std::vector <Sphere*> m_spheres;
+	std::vector <Sphere> m_spheres;
 	Plane trays[3];
 	Plane walls[4];
 	Bowl *bowl;

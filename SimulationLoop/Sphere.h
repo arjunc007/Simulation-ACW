@@ -11,7 +11,7 @@ public:
 	~Sphere(void);
 
 	int IsColliding(Sphere* sphere) const;
-	void CollisionDetection(Plane* plane, ContactManifold *contactManifold, const float &dt);
+	void CollisionDetection(Plane* plane, ContactManifold *contactManifold, const float dt);
 	void CalcTimeOfImpact(const float & dt, Plane * plane, Vector3f &colNormal);
 	void CollisionDetection(Sphere* sphere, ContactManifold *contactManifold, float dt);
 	void CollisionDetection(Bowl* bowl, ContactManifold *contactManifold, float dt);

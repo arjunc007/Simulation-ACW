@@ -44,7 +44,7 @@ int Sphere::IsColliding(Sphere* sphere) const
 		return 0;
 }
 
-void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, const float &dt)
+void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, const float dt)
 {
 	const Vector3f relativePos = m_newPos - plane->GetPos();
 	const float dist = relativePos.dot(plane->GetNormal());
@@ -110,11 +110,13 @@ void Sphere::CalcTimeOfImpact(const float & dt, Plane * plane, Vector3f &colNorm
 void Sphere::CollisionDetection(Sphere* other, ContactManifold *contactManifold, float dt)
 {
 	Vector3f relPos = m_pos - other->GetPos();
-	float dist = relPos.length();
+	float distSq = relPos.dot(relPos);
 	float minSourceDist = m_radius + other->GetRadius();
+	float minSourceDistSq = minSourceDist * minSourceDist;
 
-	if (dist < minSourceDist)
+	if (distSq < minSourceDistSq)
 	{
+		float dist = sqrt(distSq);
 		float penetration = minSourceDist - dist;
 		Vector3f normal = relPos.normalise();
 

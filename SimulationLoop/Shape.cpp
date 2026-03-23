@@ -20,6 +20,12 @@ Shape::Shape(float mass) : m_mass(mass)
 {
 }
 
+Shape::Shape(const Shape& other)
+{
+	*this = other;
+	this->m_objectID = countID++;
+}
+
 Shape::~Shape(void)
 {
 }

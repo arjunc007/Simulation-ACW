@@ -65,17 +65,18 @@ Game::Game(HDC hdc) : m_hdc(hdc), m_previousTime(0)
 }
 
 void Game::AddNewSphere() {
-	m_spheres.push_back(new Sphere());
-	m_spheres.back()->SetPos(-0.0f, 0.115f, 0.0f);
-	m_spheres.back()->SetVel(0.03f, 0.0f, 0.05f);
-	m_spheres.back()->SetSpin(20, Vector3f(0,0,1));						//In rpm
+	Sphere newSphere;
+	newSphere.SetPos(-0.0f, 0.115f, 0.0f);
+	newSphere.SetVel(0.03f, 0.0f, 0.05f);
+	newSphere.SetSpin(20, Vector3f(0,0,1));						//In rpm
+	m_spheres.push_back(newSphere);
 	WriteToConsole();
 	//LOG("Sphere " << m_spheres.size() << " Added");
 }
 
 Game::~Game(void)
 {
-	std::vector<Sphere*>().swap(m_spheres);
+	m_spheres.clear();
 	delete m_itemManifold;
 }
 
@@ -126,8 +127,8 @@ void Game::SimulationLoop()
 //**************************Update the physics calculations on each object***********************
 void Game::CalculateObjectPhysics()
 {
-	for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
-		(*it)->CalculatePhysics(m_fixedDt);
+	for (auto& sphere : m_spheres) {
+		sphere.CalculatePhysics(m_fixedDt);
 		//LOG("Sphere " <<  it - m_spheres.begin() << " Pos: " << (*it)->GetPos() << " NewPos: " << (*it)->GetNewPos() << " Velocity: " << (*it)->GetVel() << " NewVel: " << (*it)->GetNewVel());
 	}
 }
@@ -138,21 +139,21 @@ void Game::DynamicCollisionDetection()
 	if (m_spheres.size() > 0)
 	{
 		//Collision detection with scene objects
-		for (auto sphere : m_spheres) {
-			sphere->CollisionDetection(trays, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(trays + 1, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(trays + 2, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(walls, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(walls + 1, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(walls + 2, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(walls + 3, m_itemManifold, m_fixedDt);
-			sphere->CollisionDetection(bowl, m_itemManifold, m_fixedDt);
+		for (auto& sphere : m_spheres) {
+			sphere.CollisionDetection(trays, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(trays + 1, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(trays + 2, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(walls, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(walls + 1, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(walls + 2, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(walls + 3, m_itemManifold, m_fixedDt);
+			sphere.CollisionDetection(bowl, m_itemManifold, m_fixedDt);
 		}
 
 		//Collision with added items
-		for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != (m_spheres.end() - 1); ++it) {
-			for (std::vector<Sphere*>::iterator it2 = it + 1; it2 != m_spheres.end(); it2++)
-				(*it)->CollisionDetection(*it2, m_itemManifold, m_fixedDt);
+		for (auto it = m_spheres.begin(); it != m_spheres.end(); ++it) {
+			for (auto it2 = std::next(it); it2 != m_spheres.end(); ++it2)
+				it->CollisionDetection(&(*it2), m_itemManifold, m_fixedDt);
 		}
 	}
 }
@@ -187,14 +188,15 @@ void Game::DynamicCollisionResponse()
 //**************************Update the physics calculations on each object***********************
 void Game::UpdateObjectPhysics()
 {
-	for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end();) 
+	for (auto it = m_spheres.begin(); it != m_spheres.end();) 
 	{
-		(*it)->Update();
+		it->Update();
 		//Removes item if it falls outside a sphere of 25cm radius from center of box
-		if (((*it)->GetPos() - Vector3f(0.0f, 0.075f, 0.0f)).length() > 0.25f)
+		Vector3f centerOffset = it->GetPos() - Vector3f(0.0f, 0.075f, 0.0f);
+		if (centerOffset.dot(centerOffset) > 0.0625f)
 			it = m_spheres.erase(it);
 		else
-			it++;
+			++it;
 	}
 	trays[0].UpdatePos(m_fixedDt);
 	trays[2].UpdatePos(m_fixedDt);
@@ -298,8 +300,8 @@ void Game::Render()									// Here's Where We Do All The Drawing
 	gluLookAt(camera.GetX(), camera.GetY(), camera.GetZ(), focus.GetX(), focus.GetY(), focus.GetZ(), 0, 1, 0);
 
 	glEnable(GL_TEXTURE_2D);
-	for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
-		(*it)->Render();
+	for (auto it = m_spheres.begin(); it != m_spheres.end(); ++it) {
+		it->Render();
 	}
 
 	glEnable(GL_BLEND);

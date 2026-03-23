@@ -15,6 +15,8 @@ class Shape
 {
 public:
 	Shape(void);
+	Shape(const Shape& other);
+	Shape& operator=(const Shape& other) = default;
 	virtual ~Shape(void);
 
 	void CalculatePhysics(float dt);
