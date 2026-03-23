@@ -75,7 +75,10 @@ void Shape::SetFriction(const float& kf)
 
 void Shape::AddImpulse(const Vector3f& impulse)
 {
-	m_newVelocity += impulse / m_mass;
+	if (m_mass < 1000000.f)
+	{
+		m_newVelocity += impulse / m_mass;
+	}
 }
 
 void Shape::AddAngularImpulse(const Vector3f& angImpulse)
@@ -107,19 +110,6 @@ void Shape::CalculatePhysics(float dt)
 	if (m_mass < 1000000.0f) {
 		m_force += m_mass * g;
 	}
-
-	/*if (!m_isGrounded && !isColliding)
-	{
-		m_force += m_mass * g;
-	}
-	else if (m_isGrounded && !isColliding)
-	{
-		m_isGrounded = false;
-	}
-	else if (m_isGrounded)
-	{
-		m_force += m_friction;
-	}*/
 
 	CalcVelPos(dt);
 

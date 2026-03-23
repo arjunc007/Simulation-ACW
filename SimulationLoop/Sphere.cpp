@@ -46,16 +46,32 @@ int Sphere::IsColliding(Sphere* sphere) const
 
 void Sphere::CollisionDetection(Plane* plane, ContactManifold* contactManifold, const float &dt)
 {
-	const float dist = plane->GetNormal().dot(m_pos - plane->GetPos());
+	const Vector3f relativePos = m_newPos - plane->GetPos();
+	const float dist = relativePos.dot(plane->GetNormal());
 	const float penetration = m_radius - dist;
 
-	if (penetration > 0)
+	if (penetration > 0 && dist > -m_radius)
 	{
-		Vector3f d = m_pos - plane->GetPos();
-		if (fabsf(d.dot(plane->GetTangent())) < plane->GetWidth() / 2.0f &&
-			fabsf(d.dot(plane->GetBinormal())) < plane->GetLength() / 2.0f)
+		if (fabsf(relativePos.dot(plane->GetTangent())) < plane->GetWidth() / 2.0f &&
+			fabsf(relativePos.dot(plane->GetBinormal())) < plane->GetLength() / 2.0f)
 		{
-			contactManifold->Add({ this, plane, plane->GetNormal(), dt, penetration });
+			bool insideHole = false;
+			for (auto& hole : plane->GetHoles())
+			{
+				Vector3f vToHole = m_newPos - hole.GetPos();
+				float distSq = vToHole.GetX() * vToHole.GetX() + vToHole.GetZ() * vToHole.GetZ();
+
+				if (distSq < (hole.GetRadius() * hole.GetRadius()))
+				{
+					insideHole = true;
+					break;
+				}
+			}
+
+			if (!insideHole)
+			{
+				contactManifold->Add({ this, plane, plane->GetNormal(), dt, penetration });
+			}
 		}
 	}
 }

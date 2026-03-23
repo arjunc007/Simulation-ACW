@@ -52,7 +52,7 @@ private:
 	std::unique_ptr<InputManager> m_inputManager;
 	HDC   m_hdc;
 	float m_dt;
-	const float m_fixedDt = 1.f / 60.f;
+	const float m_fixedDt = 1.f / 240.f;
 	int	  m_fps;
 	float m_previousTime;
 	float timeScale;					//Smaller value means slower play

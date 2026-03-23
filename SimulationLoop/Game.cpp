@@ -137,22 +137,22 @@ void Game::DynamicCollisionDetection()
 {
 	if (m_spheres.size() > 0)
 	{
-		float time = m_dt * timeScale;
 		//Collision detection with scene objects
-		for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != m_spheres.end(); ++it) {
-			(*it)->CollisionDetection(trays, m_itemManifold, time);
-			(*it)->CollisionDetection(trays + 1, m_itemManifold, time);
-			(*it)->CollisionDetection(trays + 2, m_itemManifold, time);
-			(*it)->CollisionDetection(walls, m_itemManifold, time);
-			(*it)->CollisionDetection(walls + 1, m_itemManifold, time);
-			(*it)->CollisionDetection(walls + 2, m_itemManifold, time);
-			(*it)->CollisionDetection(walls + 3, m_itemManifold, time);
-			(*it)->CollisionDetection(bowl, m_itemManifold, time);
+		for (auto sphere : m_spheres) {
+			sphere->CollisionDetection(trays, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(trays + 1, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(trays + 2, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(walls, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(walls + 1, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(walls + 2, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(walls + 3, m_itemManifold, m_fixedDt);
+			sphere->CollisionDetection(bowl, m_itemManifold, m_fixedDt);
 		}
+
 		//Collision with added items
 		for (std::vector<Sphere*>::iterator it = m_spheres.begin(); it != (m_spheres.end() - 1); ++it) {
 			for (std::vector<Sphere*>::iterator it2 = it + 1; it2 != m_spheres.end(); it2++)
-				(*it)->CollisionDetection(*it2, m_itemManifold, m_dt*timeScale);
+				(*it)->CollisionDetection(*it2, m_itemManifold, m_fixedDt);
 		}
 	}
 }
@@ -166,15 +166,21 @@ void Game::DynamicCollisionResponse()
 
 		point.contactID1->CollisionResponse(point);
 
-		const float slack = 0.01f;
-		float totalInvMass = (1.f / point.contactID1->GetMass());
-		if (point.contactID2->GetMass() < 1000000.0f)
+		constexpr const float slack = 0.0005f;
+		const float percent = 0.8f;
+		
+		if (point.penetration > slack)
 		{
-			totalInvMass += (1.0f / point.contactID2->GetMass());
-		}
+			Vector3f correction = point.contactNormal * (point.penetration * percent);
 
-		Vector3f correction = point.contactNormal * (point.penetration * 0.8f);
-		point.contactID1->SetNewPos(point.contactID1->GetNewPos() + correction);
+			Vector3f currentNewPos = point.contactID1->GetNewPos();
+			point.contactID1->SetNewPos(currentNewPos + correction);
+
+			if (point.contactID2->GetMass() < 1000000.0f) {
+				Vector3f otherNewPos = point.contactID2->GetNewPos();
+				point.contactID2->SetNewPos(otherNewPos - correction);
+			}
+		}
 	}
 }
 
@@ -190,8 +196,8 @@ void Game::UpdateObjectPhysics()
 		else
 			it++;
 	}
-	trays[0].UpdatePos(m_dt*timeScale);
-	trays[2].UpdatePos(m_dt*timeScale);
+	trays[0].UpdatePos(m_fixedDt);
+	trays[2].UpdatePos(m_fixedDt);
 }
 
 void Game::RemoveLastItem()

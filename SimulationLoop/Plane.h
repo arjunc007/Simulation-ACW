@@ -18,6 +18,7 @@ public:
 	const Vector3f& GetBinormal() const;
 	float GetWidth() const { return m_width; }
 	float GetLength() const { return m_length; }
+	const std::vector<Hole>& GetHoles() const { return m_holes; }
 
 	int IsColliding(Sphere* sphere) const override;
 	bool IsMoving() const;
@@ -36,6 +37,6 @@ private:
 	Vector3f vertices[4];
 	float m_diag, m_length, m_width;
 	bool moving;
-	std::vector<Hole> holes;
+	std::vector<Hole> m_holes;
 };
 

@@ -34,8 +34,8 @@ void Plane::AddHoles()
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
 		{
-			holes.push_back(Hole());
-			holes.back().SetPos(-0.03f + i*0.03f, 0.0f, -0.03f + j*0.03f);
+			m_holes.push_back(Hole());
+			m_holes.back().SetPos(-0.03f + i*0.03f, 0.0f, -0.03f + j*0.03f);
 		}
 }
 
@@ -56,41 +56,29 @@ void Plane::SetMoving(bool b)
 int Plane::IsColliding(Sphere* sphere) const
 {
 	const float r = sphere->GetRadius();
-	Vector3f newpos(sphere->GetNewPos());
-	Vector3f pos(sphere->GetPos());
+	Vector3f sPos(sphere->GetPos());
 
-	const float oldDist = m_normal.dot(pos - m_pos);
-	const float newDist = m_normal.dot(newpos - m_pos);
+	const float dist = m_normal.dot(sPos - m_pos);
 
-	const float dtan = fabsf((pos - m_pos).dot(t));
-	const float dbinorm = fabsf((pos - m_pos).dot(b));
-
-	//check within bounds of  plane
-	if (dtan < r + m_width / 2.f && dbinorm < r + m_length / 2.f)
+	if (fabs(dist) <= r)
 	{
-		//Intersection if points on opposite sides
-		if (oldDist * newDist < 0.f)
+		Vector3f d = sPos - m_pos;
+		if (fabsf(d.dot(t)) < m_width / 2.f && fabsf(d.dot(b)) < m_length / 2.f)
 		{
-			for (auto it = holes.begin(); it != holes.end(); it++)
+			for (const auto& hole : m_holes)
 			{
-				if ((pos - it->GetPos()).length() < it->GetRadius())
+				float distToHole = (sPos - hole.GetPos()).length();
+
+				if (distToHole < hole.GetRadius() - sphere->GetRadius())
+				{
 					return 0;
+				}
 			}
-			return 1;
 		}
 
-		//If start or end inside radius
-		if (newDist <= r && newDist >= -r)
-		{
-			for (auto it = holes.begin(); it != holes.end(); it++)
-			{
-				if ((pos - it->GetPos()).length() < it->GetRadius())
-							return 0;
-			}
-			return 1;
-		}
+		return 1;
 	}
-	//No collision otherwise
+
 	return 0;
 }
 
@@ -126,17 +114,16 @@ void Plane::UpdatePos(float dt)
 {
 	if (moving)
 	{
-		Vector3f velocity = m_velocity;
-		Vector3f moveDist = velocity * dt;
+		Vector3f moveDist = m_velocity * dt;
 
 		for (int i = 0; i < 4; i++)
 		{
 			vertices[i] += moveDist;
 		}
 
-		m_pos = (vertices[0] + vertices[2]) * 0.5f;
+		m_pos += moveDist;
 
-		if (m_pos.GetX() >= 0.1f || m_pos.GetX() <= -0.1f)
+		if (m_pos.GetX() >= 0.1f || m_pos.GetX() <= 0.0f)
 		{
 			moving = false;
 		}
@@ -168,6 +155,6 @@ void Plane::Render() const
 	glVertex3d(vertices[3].GetX(), vertices[3].GetY(), vertices[3].GetZ());
 	glEnd();
 
-	for (auto it = holes.begin(); it != holes.end(); it++)
-		it->Render();
+	for (const auto& hole : m_holes)
+		hole.Render();
 }
